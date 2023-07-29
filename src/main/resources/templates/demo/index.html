@@ -1,0 +1,17 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: layout(~{::title}, ~{::header}, ~{::main})}">
+  <head>
+    <title>Start</title>
+
+    <th:block th:fragment="header" />
+  </head>
+  <body>
+    <main>
+      <h1>Demo</h1>
+
+      <ul>
+        <li><a href="/demo/register">Register</a></li>
+      </ul>
+    </main>
+  </body>
+</html>

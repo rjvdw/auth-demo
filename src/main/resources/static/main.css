@@ -1,0 +1,43 @@
+html,
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+main {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding: 1rem;
+}
+
+textarea,
+input,
+select,
+button {
+  font-size: inherit;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
+}
+
+.form-section {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 1rem;
+}
+
+.form-section > :is(label, textarea, input, select, button) {
+  align-self: center;
+}
+
+.form-section > .controls {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 1rem;
+}
