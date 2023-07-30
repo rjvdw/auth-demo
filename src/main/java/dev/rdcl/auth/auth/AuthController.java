@@ -1,7 +1,6 @@
 package dev.rdcl.auth.auth;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -11,18 +10,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Controller
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
-    private final RelyingPartyService relyingPartyService;
-    private final UserService userService;
-    private final Map<String, PublicKeyCredentialCreationOptions> activeRequests = new HashMap<>();
 
     @PostMapping(
         path = "/register",

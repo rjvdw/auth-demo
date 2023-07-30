@@ -1,7 +1,7 @@
 package dev.rdcl.auth.auth;
 
-import com.yubico.webauthn.data.ByteArray;
-import com.yubico.webauthn.data.UserIdentity;
+import com.yubico.webauthn.RegistrationResult;
+import dev.rdcl.auth.auth.entities.AuthenticatorEntity;
 import dev.rdcl.auth.auth.entities.UserEntity;
 import dev.rdcl.auth.auth.errors.UserDoesNotExist;
 import jakarta.persistence.EntityManager;
@@ -9,9 +9,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.nio.ByteBuffer;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -19,63 +17,45 @@ public class UserService {
 
     private final EntityManager em;
 
-    public Optional<UserIdentity> findUser(String email) {
+    public Optional<UserEntity> findUser(String email) {
         return em
             .createNamedQuery("User.findByEmail", UserEntity.class)
             .setParameter("email", email)
             .getResultStream()
-            .findAny()
-            .map(this::map);
+            .findAny();
     }
 
-    public UserIdentity getUser(String email) {
+    public UserEntity getUser(String email) {
         return findUser(email)
             .orElseThrow(() -> new UserDoesNotExist(email));
     }
 
     @Transactional
-    public UserIdentity createUser(String email, String name) {
-        var entity = UserEntity.builder()
+    public UserEntity createUser(String email, String name) {
+        var user = UserEntity.builder()
             .email(email)
             .name(name)
             .build();
 
-        em.persist(entity);
+        em.persist(user);
         em.flush();
 
-        return map(entity);
+        return user;
     }
 
-    private UserIdentity map(UserEntity entity) {
-        return UserIdentity.builder()
-            .name(entity.getEmail())
-            .displayName(entity.getName())
-            .id(map(entity.getId()))
+    @Transactional
+    public void registerAuthenticator(UserEntity user, RegistrationResult result) {
+        System.out.print("result: ");
+        System.out.println(result);
+
+        var authenticator = AuthenticatorEntity.builder()
+            .user(user)
+            .keyId(result.getKeyId().getId().getBytes())
+            .cose(result.getPublicKeyCose().getBytes())
+            .signatureCount(result.getSignatureCount())
             .build();
-    }
 
-    private UserEntity map(UserIdentity identity) {
-        return UserEntity.builder()
-            .email(identity.getName())
-            .name(identity.getDisplayName())
-            .id(map(identity.getId()))
-            .build();
-    }
-
-    private UUID map(ByteArray ba) {
-        byte[] bytes = ba.getBytes();
-        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-        long high = byteBuffer.getLong();
-        long low = byteBuffer.getLong();
-
-        return new UUID(high, low);
-    }
-
-    private ByteArray map(UUID uuid) {
-        ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
-        bb.putLong(uuid.getMostSignificantBits());
-        bb.putLong(uuid.getLeastSignificantBits());
-
-        return new ByteArray(bb.array());
+        em.persist(authenticator);
+        em.flush();
     }
 }

@@ -2,17 +2,22 @@ package dev.rdcl.auth.auth;
 
 import com.yubico.webauthn.FinishRegistrationOptions;
 import com.yubico.webauthn.StartRegistrationOptions;
+import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredential;
 import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
+import com.yubico.webauthn.data.UserIdentity;
 import com.yubico.webauthn.exception.RegistrationFailedException;
+import dev.rdcl.auth.auth.entities.UserEntity;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
@@ -32,11 +37,11 @@ public class AuthService {
 
         var request = relyingPartyService.getRelyingParty().startRegistration(
             StartRegistrationOptions.builder()
-                .user(user)
+                .user(map(user))
                 .build()
         );
 
-        activeRequests.put(user.getName(), request);
+        activeRequests.put(user.getEmail(), request);
 
         return request;
     }
@@ -45,7 +50,7 @@ public class AuthService {
     public boolean completeRegistration(String email, String credentialJson) {
         try {
             var user = userService.getUser(email);
-            var request = Optional.ofNullable(activeRequests.get(user.getName()))
+            var request = Optional.ofNullable(activeRequests.get(user.getEmail()))
                 .orElseThrow(() -> new RuntimeException("no active request")); // FIXME
             var response = PublicKeyCredential.parseRegistrationResponseJson(credentialJson);
 
@@ -56,8 +61,7 @@ public class AuthService {
                     .build()
             );
 
-            System.out.print("result: ");
-            System.out.println(result);
+            userService.registerAuthenticator(user, result);
 
             return true;
         } catch (RegistrationFailedException e) {
@@ -66,6 +70,39 @@ public class AuthService {
         } catch (IOException e) {
             throw new RuntimeException(e); // FIXME
         }
+    }
+
+    private UserIdentity map(UserEntity entity) {
+        return UserIdentity.builder()
+            .name(entity.getEmail())
+            .displayName(entity.getName())
+            .id(map(entity.getId()))
+            .build();
+    }
+
+    private UserEntity map(UserIdentity identity) {
+        return UserEntity.builder()
+            .email(identity.getName())
+            .name(identity.getDisplayName())
+            .id(map(identity.getId()))
+            .build();
+    }
+
+    private UUID map(ByteArray ba) {
+        byte[] bytes = ba.getBytes();
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+        long high = byteBuffer.getLong();
+        long low = byteBuffer.getLong();
+
+        return new UUID(high, low);
+    }
+
+    private ByteArray map(UUID uuid) {
+        ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
+
+        return new ByteArray(bb.array());
     }
 
 }
