@@ -1,60 +1,81 @@
 package dev.rdcl.auth.auth;
 
-import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
+import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.UserIdentity;
+import dev.rdcl.auth.auth.entities.UserEntity;
 import dev.rdcl.auth.auth.errors.UserDoesNotExist;
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.ByteBuffer;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class UserService {
 
-    private static final Map<String, UserEntry> users = new HashMap<>();
+    private final EntityManager em;
 
-    public Optional<UserIdentity> findUser(String username) {
-        return Optional.ofNullable(users.get(username)).map(UserEntry::identity);
+    public Optional<UserIdentity> findUser(String email) {
+        return em
+            .createNamedQuery("User.findByEmail", UserEntity.class)
+            .setParameter("email", email)
+            .getResultStream()
+            .findAny()
+            .map(this::map);
     }
 
-    public UserIdentity getUser(String username) {
-        return findUser(username).orElseThrow(() -> new UserDoesNotExist(username));
+    public UserIdentity getUser(String email) {
+        return findUser(email)
+            .orElseThrow(() -> new UserDoesNotExist(email));
     }
 
-    public void saveUser(UserIdentity user) {
-        users.put(
-            user.getName(),
-            new UserEntry(user, null)
-        );
+    @Transactional
+    public UserIdentity createUser(String email, String name) {
+        var entity = UserEntity.builder()
+            .email(email)
+            .name(name)
+            .build();
+
+        em.persist(entity);
+        em.flush();
+
+        return map(entity);
     }
 
-    public void setActiveRequest(UserIdentity user, PublicKeyCredentialCreationOptions request) {
-        var entry = getUserEntry(user);
-        users.put(
-            user.getName(),
-            new UserEntry(entry.identity(), request)
-        );
+    private UserIdentity map(UserEntity entity) {
+        return UserIdentity.builder()
+            .name(entity.getEmail())
+            .displayName(entity.getName())
+            .id(map(entity.getId()))
+            .build();
     }
 
-    public Optional<PublicKeyCredentialCreationOptions> getActiveRequest(UserIdentity user) {
-        var entry = getUserEntry(user);
-        return Optional.ofNullable(entry.request());
+    private UserEntity map(UserIdentity identity) {
+        return UserEntity.builder()
+            .email(identity.getName())
+            .name(identity.getDisplayName())
+            .id(map(identity.getId()))
+            .build();
     }
 
-    public void clearActiveRequest(UserIdentity user) {
-        var entry = getUserEntry(user);
-        users.put(
-            user.getName(),
-            new UserEntry(entry.identity(), null)
-        );
+    private UUID map(ByteArray ba) {
+        byte[] bytes = ba.getBytes();
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
+        long high = byteBuffer.getLong();
+        long low = byteBuffer.getLong();
+
+        return new UUID(high, low);
     }
 
-    private UserEntry getUserEntry(UserIdentity user) {
-        return Optional.ofNullable(users.get(user.getName()))
-            .orElseThrow(() -> new UserDoesNotExist(user.getName()));
-    }
-}
+    private ByteArray map(UUID uuid) {
+        ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
+        bb.putLong(uuid.getMostSignificantBits());
+        bb.putLong(uuid.getLeastSignificantBits());
 
-record UserEntry(UserIdentity identity, PublicKeyCredentialCreationOptions request) {
+        return new ByteArray(bb.array());
+    }
 }
