@@ -22,6 +22,11 @@ import java.util.UUID;
 @Entity(name = "UserEntity")
 @Table(name = "auth_user")
 @NamedQueries({
+    @NamedQuery(name = "User.findById", query = """
+            select u
+            from UserEntity u
+            where u.id = :id
+        """),
     @NamedQuery(name = "User.findByEmail", query = """
             select u
             from UserEntity u

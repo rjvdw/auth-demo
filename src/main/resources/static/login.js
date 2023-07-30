@@ -1,8 +1,8 @@
-import { create } from 'https://unpkg.com/@github/webauthn-json?module'
+import { get } from 'https://unpkg.com/@github/webauthn-json?module'
 import { handleForm, selectControls } from './lib/form.js'
 import { HttpError } from './lib/http-error.js'
 
-document.getElementById('registration-form').addEventListener('submit', async (event) => {
+document.getElementById('login-form').addEventListener('submit', async (event) => {
   event.preventDefault()
   const controls = selectControls(event.target).filter((el) => !el.disabled)
 
@@ -10,7 +10,7 @@ document.getElementById('registration-form').addEventListener('submit', async (e
     const user = new FormData(event.target).get('user')
     const options = await handleForm(event.target)
     controls.forEach((el) => (el.disabled = true))
-    const credential = await create(options)
+    const credential = await get(options)
     const result = await validate(user, credential)
 
     console.log(result)
@@ -31,7 +31,7 @@ document.getElementById('registration-form').addEventListener('submit', async (e
  * @throws {HttpError} If the validation request fails.
  */
 async function validate(user, credential) {
-  const response = await fetch('/auth/register/validate', {
+  const response = await fetch('/auth/login/validate', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -1,23 +1,22 @@
 package dev.rdcl.auth.auth;
 
+import com.yubico.webauthn.AssertionRequest;
+import com.yubico.webauthn.FinishAssertionOptions;
 import com.yubico.webauthn.FinishRegistrationOptions;
+import com.yubico.webauthn.StartAssertionOptions;
 import com.yubico.webauthn.StartRegistrationOptions;
-import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredential;
 import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
-import com.yubico.webauthn.data.UserIdentity;
+import com.yubico.webauthn.exception.AssertionFailedException;
 import com.yubico.webauthn.exception.RegistrationFailedException;
-import dev.rdcl.auth.auth.entities.UserEntity;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 @RequiredArgsConstructor
 @Service
@@ -25,7 +24,8 @@ public class AuthService {
 
     private final RelyingPartyService relyingPartyService;
     private final UserService userService;
-    private final Map<String, PublicKeyCredentialCreationOptions> activeRequests = new HashMap<>();
+    private final Map<String, PublicKeyCredentialCreationOptions> activeRegisterRequests = new HashMap<>();
+    private final Map<String, AssertionRequest> activeLoginRequests = new HashMap<>();
 
     @Transactional
     public PublicKeyCredentialCreationOptions startRegistration(String email, String name) {
@@ -37,11 +37,11 @@ public class AuthService {
 
         var request = relyingPartyService.getRelyingParty().startRegistration(
             StartRegistrationOptions.builder()
-                .user(map(user))
+                .user(Mappers.userEntityToIdentity(user))
                 .build()
         );
 
-        activeRequests.put(user.getEmail(), request);
+        activeRegisterRequests.put(user.getEmail(), request);
 
         return request;
     }
@@ -50,7 +50,7 @@ public class AuthService {
     public boolean completeRegistration(String email, String credentialJson) {
         try {
             var user = userService.getUser(email);
-            var request = Optional.ofNullable(activeRequests.get(user.getEmail()))
+            var request = Optional.ofNullable(activeRegisterRequests.get(user.getEmail()))
                 .orElseThrow(() -> new RuntimeException("no active request")); // FIXME
             var response = PublicKeyCredential.parseRegistrationResponseJson(credentialJson);
 
@@ -62,6 +62,7 @@ public class AuthService {
             );
 
             userService.registerAuthenticator(user, result);
+            activeRegisterRequests.remove(user.getEmail());
 
             return true;
         } catch (RegistrationFailedException e) {
@@ -72,37 +73,45 @@ public class AuthService {
         }
     }
 
-    private UserIdentity map(UserEntity entity) {
-        return UserIdentity.builder()
-            .name(entity.getEmail())
-            .displayName(entity.getName())
-            .id(map(entity.getId()))
-            .build();
+    @Transactional
+    public AssertionRequest login(String email) {
+        var user = userService.getUser(email);
+
+        var request = relyingPartyService.getRelyingParty().startAssertion(
+            StartAssertionOptions.builder()
+                .username(user.getEmail())
+                .build()
+        );
+
+        activeLoginRequests.put(user.getEmail(), request);
+
+        return request;
     }
 
-    private UserEntity map(UserIdentity identity) {
-        return UserEntity.builder()
-            .email(identity.getName())
-            .name(identity.getDisplayName())
-            .id(map(identity.getId()))
-            .build();
-    }
+    @Transactional
+    public boolean completeLogin(String email, String credentialJson) {
+        try {
+            var user = userService.getUser(email);
+            var request = Optional.ofNullable(activeLoginRequests.get(user.getEmail()))
+                .orElseThrow(() -> new RuntimeException("no active request")); // FIXME
+            var response = PublicKeyCredential.parseAssertionResponseJson(credentialJson);
 
-    private UUID map(ByteArray ba) {
-        byte[] bytes = ba.getBytes();
-        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
-        long high = byteBuffer.getLong();
-        long low = byteBuffer.getLong();
+            var result = relyingPartyService.getRelyingParty().finishAssertion(
+                FinishAssertionOptions.builder()
+                    .request(request)
+                    .response(response)
+                    .build()
+            );
 
-        return new UUID(high, low);
-    }
+            activeLoginRequests.remove(user.getEmail());
 
-    private ByteArray map(UUID uuid) {
-        ByteBuffer bb = ByteBuffer.wrap(new byte[16]);
-        bb.putLong(uuid.getMostSignificantBits());
-        bb.putLong(uuid.getLeastSignificantBits());
-
-        return new ByteArray(bb.array());
+            return result.isSuccess();
+        } catch (AssertionFailedException e) {
+            System.err.println("Login failed: " + e.getMessage());
+            return false;
+        } catch (IOException e) {
+            throw new RuntimeException(e); // FIXME
+        }
     }
 
 }

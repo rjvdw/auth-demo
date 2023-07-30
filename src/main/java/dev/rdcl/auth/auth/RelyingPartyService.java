@@ -11,7 +11,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RelyingPartyService {
 
-    private final AuthRepository authRepository;
+    private final CredentialService credentialService;
 
     public RelyingParty getRelyingParty() {
         var identity = RelyingPartyIdentity.builder()
@@ -21,7 +21,7 @@ public class RelyingPartyService {
 
         return RelyingParty.builder()
             .identity(identity)
-            .credentialRepository(authRepository)
+            .credentialRepository(credentialService)
             .origins(Set.of("http://localhost:8080"))
             .build();
     }

@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,14 @@ public class UserService {
         return em
             .createNamedQuery("User.findByEmail", UserEntity.class)
             .setParameter("email", email)
+            .getResultStream()
+            .findAny();
+    }
+
+    public Optional<UserEntity> findUser(UUID id) {
+        return em
+            .createNamedQuery("User.findById", UserEntity.class)
+            .setParameter("id", id)
             .getResultStream()
             .findAny();
     }
@@ -41,6 +51,12 @@ public class UserService {
         em.flush();
 
         return user;
+    }
+
+    public Stream<AuthenticatorEntity> getAuthenticators(UserEntity user) {
+        return em.createNamedQuery("Authenticator.findByUser", AuthenticatorEntity.class)
+            .setParameter("user", user)
+            .getResultStream();
     }
 
     @Transactional

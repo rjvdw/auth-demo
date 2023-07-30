@@ -8,6 +8,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,6 +24,13 @@ import java.util.UUID;
 @AllArgsConstructor
 @Entity(name = "AuthenticatorEntity")
 @Table(name = "authenticator")
+@NamedQueries({
+    @NamedQuery(name = "Authenticator.findByUser", query = """
+            select a
+            from AuthenticatorEntity a
+            where user = :user
+        """),
+})
 public class AuthenticatorEntity {
 
     @Id

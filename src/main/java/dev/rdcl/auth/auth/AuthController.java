@@ -39,6 +39,9 @@ public class AuthController {
         }
     }
 
+    public record RegistrationRequestBody(String user, String name) {
+    }
+
     @PostMapping(
         path = "/register/validate",
         consumes = {
@@ -48,19 +51,67 @@ public class AuthController {
             MediaType.APPLICATION_JSON_VALUE,
         }
     )
-    public @ResponseBody ValidateResponseBody validateRegistration(@RequestBody ValidateRequestBody body) {
+    public @ResponseBody ValidateRegistrationResponseBody validateRegistration(
+        @RequestBody ValidateRegistrationRequestBody body
+    ) {
         var success = authService.completeRegistration(body.user(), body.credentialJson());
 
-        return new ValidateResponseBody(success);
+        return new ValidateRegistrationResponseBody(success);
     }
 
-    public record RegistrationRequestBody(String user, String name) {
+    public record ValidateRegistrationRequestBody(String user, String credentialJson) {
     }
 
-    public record ValidateRequestBody(String user, String credentialJson) {
+    public record ValidateRegistrationResponseBody(boolean success) {
     }
 
-    public record ValidateResponseBody(boolean success) {
+    @PostMapping(
+        path = "/login",
+        consumes = {
+            MediaType.APPLICATION_FORM_URLENCODED_VALUE,
+            MediaType.MULTIPART_FORM_DATA_VALUE,
+        },
+        produces = {
+            MediaType.APPLICATION_JSON_VALUE,
+        }
+    )
+    public ResponseEntity<String> login(LoginRequestBody body) {
+        var request = authService.login(body.user());
+
+        try {
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request.toCredentialsGetJson());
+        } catch (JsonProcessingException ex) {
+            throw new RuntimeException(ex); // FIXME
+        }
+
+    }
+
+    public record LoginRequestBody(String user) {
+    }
+
+    @PostMapping(
+        path = "/login/validate",
+        consumes = {
+            MediaType.APPLICATION_JSON_VALUE,
+        },
+        produces = {
+            MediaType.APPLICATION_JSON_VALUE,
+        }
+    )
+    public @ResponseBody ValidateLoginResponseBody validateLogin(
+        @RequestBody ValidateLoginRequestBody body
+    ) {
+        var success = authService.completeLogin(body.user(), body.credentialJson());
+
+        return new ValidateLoginResponseBody(success);
+    }
+
+    public record ValidateLoginRequestBody(String user, String credentialJson) {
+    }
+
+    public record ValidateLoginResponseBody(boolean success) {
     }
 
 }

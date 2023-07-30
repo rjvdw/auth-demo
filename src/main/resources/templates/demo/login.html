@@ -1,0 +1,26 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layouts/main :: layout(~{::title}, ~{::header}, ~{::main})}">
+  <head>
+    <title>Log in</title>
+
+    <th:block th:fragment="header">
+      <script defer type="module" src="/login.js"></script>
+    </th:block>
+  </head>
+  <body>
+    <main>
+      <h1>Log in</h1>
+
+      <form id="login-form" method="post" action="/auth/login">
+        <section class="form-section">
+          <label for="user">User</label>
+          <input type="email" id="user" name="user" autocomplete="username" placeholder="john.doe@example.com" />
+
+          <div class="controls">
+            <button>Log in</button>
+          </div>
+        </section>
+      </form>
+    </main>
+  </body>
+</html>
