@@ -1,4 +1,4 @@
-import { FormSubmitError } from './form-submit-error.js'
+import { FormSubmitError } from './errors/form-submit-error.js'
 
 /**
  * Submit a form using `fetch`.

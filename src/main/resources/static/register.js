@@ -1,6 +1,6 @@
 import { create } from 'https://unpkg.com/@github/webauthn-json?module'
 import { handleForm, selectControls } from './lib/form.js'
-import { HttpError } from './lib/http-error.js'
+import { post } from './lib/http.js'
 
 document.getElementById('registration-form').addEventListener('submit', async (event) => {
   event.preventDefault()
@@ -11,7 +11,10 @@ document.getElementById('registration-form').addEventListener('submit', async (e
     const options = await handleForm(event.target)
     controls.forEach((el) => (el.disabled = true))
     const credential = await create(options)
-    const result = await validate(user, credential)
+    const result = await post('/auth/register/validate', {
+      user,
+      credentialJson: JSON.stringify(credential),
+    })
 
     console.log(result)
   } catch (error) {
@@ -20,31 +23,3 @@ document.getElementById('registration-form').addEventListener('submit', async (e
     controls.forEach((el) => (el.disabled = false))
   }
 })
-
-/**
- * Validate the generated credential.
- *
- * @template T The expected type of the response.
- * @param {string} user The user for whom the credential was created.
- * @param {Credential} credential The generated credential.
- * @returns {Promise<T>} The validation result.
- * @throws {HttpError} If the validation request fails.
- */
-async function validate(user, credential) {
-  const response = await fetch('/auth/register/validate', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      user,
-      credentialJson: JSON.stringify(credential),
-    }),
-  })
-
-  if (!response.ok) {
-    throw new HttpError(response)
-  }
-
-  return response.json()
-}
