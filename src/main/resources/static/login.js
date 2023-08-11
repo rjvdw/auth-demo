@@ -9,8 +9,10 @@ document.getElementById('login-form').addEventListener('submit', async (event) =
   try {
     const user = new FormData(event.target).get('user')
     const options = await handleForm(event.target)
+    console.log('options:', JSON.stringify(options, null, 2))
     controls.forEach((el) => (el.disabled = true))
     const credential = await get(options)
+    console.log('credential:', JSON.stringify(credential, null, 2))
     const result = await post('/auth/login/validate', {
       user,
       credentialJson: JSON.stringify(credential),

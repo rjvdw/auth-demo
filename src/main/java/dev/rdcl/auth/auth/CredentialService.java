@@ -4,7 +4,6 @@ import com.yubico.webauthn.CredentialRepository;
 import com.yubico.webauthn.RegisteredCredential;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialDescriptor;
-import dev.rdcl.auth.auth.entities.AuthenticatorEntity;
 import dev.rdcl.auth.auth.entities.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -56,16 +55,14 @@ public class CredentialService implements CredentialRepository {
             .flatMap(Optional::stream)
             .flatMap(userService::getAuthenticators)
             .filter(a -> Arrays.equals(a.getKeyId(), credentialId.getBytes()))
-            .map(a -> RegisteredCredential.builder()
-                .credentialId(credentialId)
-                .userHandle(userHandle)
-                .publicKeyCose(new ByteArray(a.getCose()))
-                .build())
+            .map(Mappers::authenticatorToRegisteredCredential)
             .findAny();
     }
 
     @Override
     public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
-        throw new UnsupportedOperationException("Not yet implemented");
+        return userService.getAuthenticators(credentialId)
+            .map(Mappers::authenticatorToRegisteredCredential)
+            .collect(Collectors.toSet());
     }
 }

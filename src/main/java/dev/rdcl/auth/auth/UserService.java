@@ -1,6 +1,7 @@
 package dev.rdcl.auth.auth;
 
 import com.yubico.webauthn.RegistrationResult;
+import com.yubico.webauthn.data.ByteArray;
 import dev.rdcl.auth.auth.entities.AuthenticatorEntity;
 import dev.rdcl.auth.auth.entities.UserEntity;
 import dev.rdcl.auth.auth.errors.UserDoesNotExist;
@@ -56,6 +57,12 @@ public class UserService {
     public Stream<AuthenticatorEntity> getAuthenticators(UserEntity user) {
         return em.createNamedQuery("Authenticator.findByUser", AuthenticatorEntity.class)
             .setParameter("user", user)
+            .getResultStream();
+    }
+
+    public Stream<AuthenticatorEntity> getAuthenticators(ByteArray credentialId) {
+        return em.createNamedQuery("Authenticator.findByCredentialId", AuthenticatorEntity.class)
+            .setParameter("credentialId", credentialId.getBytes())
             .getResultStream();
     }
 

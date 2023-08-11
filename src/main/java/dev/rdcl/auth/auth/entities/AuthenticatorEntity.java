@@ -25,6 +25,11 @@ import java.util.UUID;
 @Entity(name = "AuthenticatorEntity")
 @Table(name = "authenticator")
 @NamedQueries({
+    @NamedQuery(name = "Authenticator.findByCredentialId", query = """
+            select a
+            from AuthenticatorEntity a
+            where keyId = :credentialId
+        """),
     @NamedQuery(name = "Authenticator.findByUser", query = """
             select a
             from AuthenticatorEntity a

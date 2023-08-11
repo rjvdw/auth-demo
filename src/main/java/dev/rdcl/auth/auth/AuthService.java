@@ -5,8 +5,12 @@ import com.yubico.webauthn.FinishAssertionOptions;
 import com.yubico.webauthn.FinishRegistrationOptions;
 import com.yubico.webauthn.StartAssertionOptions;
 import com.yubico.webauthn.StartRegistrationOptions;
+import com.yubico.webauthn.data.AuthenticatorAttachment;
+import com.yubico.webauthn.data.AuthenticatorSelectionCriteria;
 import com.yubico.webauthn.data.PublicKeyCredential;
 import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
+import com.yubico.webauthn.data.ResidentKeyRequirement;
+import com.yubico.webauthn.data.UserVerificationRequirement;
 import com.yubico.webauthn.exception.AssertionFailedException;
 import com.yubico.webauthn.exception.RegistrationFailedException;
 import jakarta.transaction.Transactional;
@@ -14,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -38,6 +43,12 @@ public class AuthService {
         var request = relyingPartyService.getRelyingParty().startRegistration(
             StartRegistrationOptions.builder()
                 .user(Mappers.userEntityToIdentity(user))
+                .authenticatorSelection(AuthenticatorSelectionCriteria.builder()
+                    .userVerification(UserVerificationRequirement.REQUIRED)
+                    .residentKey(ResidentKeyRequirement.REQUIRED)
+                    .build()
+                )
+                .timeout(Duration.ofMinutes(2).toMillis())
                 .build()
         );
 

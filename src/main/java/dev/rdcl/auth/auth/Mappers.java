@@ -1,7 +1,9 @@
 package dev.rdcl.auth.auth;
 
+import com.yubico.webauthn.RegisteredCredential;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.UserIdentity;
+import dev.rdcl.auth.auth.entities.AuthenticatorEntity;
 import dev.rdcl.auth.auth.entities.UserEntity;
 import lombok.experimental.UtilityClass;
 
@@ -42,5 +44,13 @@ public class Mappers {
         bb.putLong(uuid.getLeastSignificantBits());
 
         return new ByteArray(bb.array());
+    }
+
+    public static RegisteredCredential authenticatorToRegisteredCredential(AuthenticatorEntity authenticator) {
+        return RegisteredCredential.builder()
+            .credentialId(new ByteArray(authenticator.getKeyId()))
+            .userHandle(uuidToByteArray(authenticator.getUser().getId()))
+            .publicKeyCose(new ByteArray(authenticator.getCose()))
+            .build();
     }
 }
